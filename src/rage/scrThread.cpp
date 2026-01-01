@@ -7,15 +7,26 @@ namespace rage
     scrThread* scrThread::GetThread(uint32_t id)
     {
         static bool init = [] {
-            if (auto addr = Memory::ScanPattern("48 8B 05 ? ? ? ? 48 89 34 F8 48 FF C7 48 39 FB 75 97"))
-                m_Threads = addr->Add(3).Rip().As<decltype(m_Threads)>();
+            if (g_IsEnhanced)
+            {
+                if (auto addr = Memory::ScanPattern("48 8B 05 ? ? ? ? 48 89 34 F8 48 FF C7 48 39 FB 75 97"))
+                    m_Threads = addr->Add(3).Rip().As<decltype(m_Threads)>();
+            }
+            else
+            {
+                if (auto addr = Memory::ScanPattern("45 33 F6 8B E9 85 C9 B8"))
+                    m_Threads = addr->Sub(4).Rip().Sub(8).As<decltype(m_Threads)>();
+            }
 
             return true;
         }();
 
+        if (!m_Threads)
+            return nullptr;
+
         for (auto& thread : *m_Threads)
         {
-            if (thread && thread->m_Context.m_ThreadId == id)
+            if (thread && thread->GetId() == id)
                 return thread;
         }
 

@@ -30,11 +30,22 @@ namespace rage
     scrProgram* scrProgram::GetProgram(uint32_t hash)
     {
         static bool init = [] {
-            if (auto addr = Memory::ScanPattern("48 C7 84 C8 D8 00 00 00 00 00 00 00"))
-                m_Programs = addr->Add(0x13).Add(3).Rip().Add(0xD8).As<decltype(m_Programs)>();
+            if (g_IsEnhanced)
+            {
+                if (auto addr = Memory::ScanPattern("48 C7 84 C8 D8 00 00 00 00 00 00 00"))
+                    m_Programs = addr->Add(0x13).Add(3).Rip().Add(0xD8).As<decltype(m_Programs)>();
+            }
+            else
+            {
+                if (auto addr = Memory::ScanPattern("48 8D 0D ? ? ? ? 41 8B D6 E8 ? ? ? ? FF 05"))
+                    m_Programs = addr->Add(3).Rip().Add(0xD8).As<decltype(m_Programs)>();
+            }
 
             return true;
         }();
+
+        if (!m_Programs)
+            return nullptr;
 
         for (int i = 0; i < 176; i++)
         {

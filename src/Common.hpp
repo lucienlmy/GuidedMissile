@@ -9,3 +9,5 @@
 #include <vector>
 
 #include <main.h>
+
+extern bool g_IsEnhanced;

@@ -9,7 +9,7 @@ namespace rage
     class scrThread
     {
     public:
-        enum State : uint32_t
+        enum class State : uint32_t
         {
             RUNNING,
             IDLE,
@@ -17,7 +17,7 @@ namespace rage
             PAUSED
         };
 
-        enum Priority : uint32_t
+        enum class Priority : uint32_t
         {
             HIGHEST,
             NORMAL,
@@ -25,48 +25,116 @@ namespace rage
             MANUAL_UPDATE = 100
         };
 
-        struct Context
+        uint32_t GetId() const
         {
-            uint32_t m_ThreadId;
-            uint64_t m_Program;
-            State m_State;
-            uint32_t m_ProgramCounter;
-            uint32_t m_FramePointer;
-            uint32_t m_StackPointer;
-            float m_TimerA;
-            float m_TimerB;
-            float m_WaitTimer;
-            char m_Pad1[0x2C];
-            uint32_t m_StackSize;
-            uint32_t m_CatchProgramCounter;
-            uint32_t m_CatchFramePointer;
-            uint32_t m_CatchStackPointer;
-            Priority m_Priority;
-            uint8_t m_CallDepth;
-            uint32_t m_CallStack[16];
-        };
-        static_assert(sizeof(Context) == 0xB0);
+            return g_IsEnhanced ? reinterpret_cast<const scrThread_GEN9*>(this)->m_Context.m_Id : reinterpret_cast<const scrThread_GEN8*>(this)->m_Context.m_Id;
+        }
 
-        virtual ~scrThread() = default;
-        virtual void Reset(uint64_t program, void* args, uint32_t argCount) = 0;
-        virtual State Run() = 0;
-        virtual State Update() = 0;
-        virtual void Kill() = 0;
-        virtual void GetInfo(void* info) = 0;
+        State GetState() const
+        {
+            return g_IsEnhanced ? reinterpret_cast<const scrThread_GEN9*>(this)->m_Context.m_State : reinterpret_cast<const scrThread_GEN8*>(this)->m_Context.m_State;
+        }
 
-        Context m_Context;
-        scrValue* m_Stack;
-        char m_Pad1[0x04];
-        uint32_t m_ArgSize;
-        uint32_t m_ArgLoc;
-        char m_Pad2[0x04];
-        char m_ErrorMessage[128];
-        uint32_t m_ScriptHash;
-        char m_ScriptName[64];
+        scrValue* GetStack() const
+        {
+            return g_IsEnhanced ? reinterpret_cast<const scrThread_GEN9*>(this)->m_Stack : reinterpret_cast<const scrThread_GEN8*>(this)->m_Stack;
+        }
+
+        void Kill()
+        {
+            g_IsEnhanced ? reinterpret_cast<scrThread_GEN9*>(this)->Kill() : reinterpret_cast<scrThread_GEN8*>(this)->Kill();
+        }
 
         static scrThread* GetThread(uint32_t id);
 
+    private:
+        struct scrThread_GEN8
+        {
+            struct Context
+            {
+                uint32_t m_Id;
+                uint32_t m_ProgramHash;
+                State m_State;
+                uint32_t m_ProgramCounter;
+                uint32_t m_FramePointer;
+                uint32_t m_StackPointer;
+                float m_TimerA;
+                float m_TimerB;
+                float m_WaitTimer;
+                char m_Pad1[0x2C];
+                uint32_t m_StackSize;
+                uint32_t m_CatchProgramCounter;
+                uint32_t m_CatchFramePointer;
+                uint32_t m_CatchStackPointer;
+                Priority m_Priority;
+                uint8_t m_CallDepth;
+                uint32_t m_Callstack[16];
+            };
+            static_assert(sizeof(Context) == 0xA8);
+
+            virtual ~scrThread_GEN8() = default;
+            virtual void Reset(uint32_t programHash, void* args, uint32_t argCount) = 0;
+            virtual State Run() = 0;
+            virtual State Update() = 0;
+            virtual void Kill() = 0;
+
+            Context m_Context;
+            scrValue* m_Stack;
+            char m_Pad2[0x04];
+            uint32_t m_ArgSize;
+            uint32_t m_ArgLoc;
+            char m_Pad3[0x04];
+            const char* m_ErrorMessage;
+            uint32_t m_ScriptHash;
+            char m_ScriptName[64];
+        };
+        static_assert(sizeof(scrThread_GEN8) == 0x118);
+
+        struct scrThread_GEN9
+        {
+            struct Context
+            {
+                uint32_t m_Id;
+                char m_Pad1[0x04];
+                uint32_t m_ProgramHash;
+                char m_Pad2[0x04];
+                State m_State;
+                uint32_t m_ProgramCounter;
+                uint32_t m_FramePointer;
+                uint32_t m_StackPointer;
+                float m_TimerA;
+                float m_TimerB;
+                float m_WaitTimer;
+                char m_Pad3[0x2C];
+                uint32_t m_StackSize;
+                uint32_t m_CatchProgramCounter;
+                uint32_t m_CatchFramePointer;
+                uint32_t m_CatchStackPointer;
+                Priority m_Priority;
+                uint8_t m_CallDepth;
+                uint32_t m_Callstack[16];
+            };
+            static_assert(sizeof(Context) == 0xB0);
+
+            virtual ~scrThread_GEN9() = default;
+            virtual void Reset(uint32_t programHash, void* args, uint32_t argCount) = 0;
+            virtual State Run() = 0;
+            virtual State Update() = 0;
+            virtual void Kill() = 0;
+            virtual void GetInfo(void* info) = 0;
+
+            Context m_Context;
+            scrValue* m_Stack;
+            char m_Pad2[0x04];
+            uint32_t m_ArgSize;
+            uint32_t m_ArgLoc;
+            char m_Pad3[0x04];
+            char m_ErrorMessage[128];
+            uint32_t m_ScriptHash;
+            char m_ScriptName[64];
+        };
+        static_assert(sizeof(scrThread_GEN9) == 0x198);
+
         static inline atArray<scrThread*>* m_Threads;
     };
-    static_assert(sizeof(scrThread) == 0x198);
 }
