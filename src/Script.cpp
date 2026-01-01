@@ -20,7 +20,7 @@ static_assert(sizeof(DroneLaunchData) == 12 * 8);
 
 #define FAIL_PROGRAM_INITIALIZATION            \
     do {                                       \
-        isProgramInitializationFailed = false; \
+        isProgramInitializationFailed = true;  \
         return;                                \
     } while (0)
 
@@ -235,8 +235,7 @@ void RunGuidedMissileScript()
     if (!isDroneInitialized && stack[droneDataStaticIndex + 244].Int >= 1) // The offset is not likely to change, so not using pattern for it
         isDroneInitialized = true;
 
-    // Cleanup when the drone state becomes 0 again (missile collided or F
-    // pressed)
+    // Cleanup when the drone state becomes 0 again (missile collided or F pressed)
     if (isDroneInitialized && stack[droneDataStaticIndex + 244].Int == 0)
         CLEANUP_SCRIPT;
 }
