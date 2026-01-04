@@ -13,7 +13,7 @@ namespace rage
             }
             else
             {
-                if (auto addr = Memory::ScanPattern("48 8D 0D ? ? ? ? 48 8B 14 FA E8 ? ? ? ? 48 85 C0 75 0A"))
+                if (auto addr = Memory::ScanPattern("48 8D 0D ? ? ? ? 48 8B 14 FA E8 ? ? ? ? 48 85 C0 75 0A")) // Works since 2019 or so
                     m_NativeRegistrationTable = addr->Add(3).Rip().As<decltype(m_NativeRegistrationTable)>();
             }
 

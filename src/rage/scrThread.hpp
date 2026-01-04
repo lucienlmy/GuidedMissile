@@ -79,7 +79,7 @@ namespace rage
             virtual void Kill() = 0;
 
             Context m_Context;
-            scrValue* m_Stack;
+            scrValue* m_Stack; // Beyond here may be different in older game versions, but it should be fine since we don't need them.
             char m_Pad2[0x04];
             uint32_t m_ArgSize;
             uint32_t m_ArgLoc;

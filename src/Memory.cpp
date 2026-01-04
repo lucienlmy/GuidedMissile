@@ -83,6 +83,12 @@ std::vector<std::optional<uint8_t>> Memory::ParsePattern(std::string_view patter
 
 std::optional<Memory> Memory::ScanPattern(const char* pattern)
 {
+    if (!pattern)
+    {
+        LOG("Invalid memory pattern.");
+        return std::nullopt;
+    }
+
     uint8_t* base = reinterpret_cast<uint8_t*>(GetModuleHandleA(nullptr));
 
     PIMAGE_DOS_HEADER dos = reinterpret_cast<PIMAGE_DOS_HEADER>(base);
@@ -106,8 +112,13 @@ std::optional<Memory> Memory::ScanPattern(const char* pattern)
         }
 
         if (match)
-            return Memory(base + i);
+        {
+            auto result = Memory(base + i);
+            LOGF("Found memory pattern at 0x%016llX.", result.As<uintptr_t>());
+            return result;
+        }
     }
 
+    LOGF("Failed to find memory pattern '%s'.", pattern);
     return std::nullopt;
 }

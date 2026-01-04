@@ -7,6 +7,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Common.hpp" />
+    <ClInclude Include="src\Logger.hpp" />
     <ClInclude Include="src\Keyboard.hpp" />
     <ClInclude Include="src\Memory.hpp" />
     <ClInclude Include="src\Script.hpp" />

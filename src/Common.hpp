@@ -1,7 +1,9 @@
 #pragma once
 #include <Windows.h>
+#include <array>
 #include <cstddef>
 #include <filesystem>
+#include <fstream>
 #include <future>
 #include <iostream>
 #include <map>
@@ -9,5 +11,7 @@
 #include <vector>
 
 #include <main.h>
+
+#include "Logger.hpp"
 
 extern bool g_IsEnhanced;

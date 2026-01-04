@@ -14,7 +14,7 @@ namespace rage
             }
             else
             {
-                if (auto addr = Memory::ScanPattern("45 33 F6 8B E9 85 C9 B8"))
+                if (auto addr = Memory::ScanPattern("45 33 F6 8B E9 85 C9 B8")) // Works since b323
                     m_Threads = addr->Sub(4).Rip().Sub(8).As<decltype(m_Threads)>();
             }
 

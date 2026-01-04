@@ -37,7 +37,7 @@ namespace rage
             }
             else
             {
-                if (auto addr = Memory::ScanPattern("48 8D 0D ? ? ? ? 41 8B D6 E8 ? ? ? ? FF 05"))
+                if (auto addr = Memory::ScanPattern("48 8D 0D ? ? ? ? E8 ? ? ? ? 33 FF 48 85 C0 74")) // Works since b323
                     m_Programs = addr->Add(3).Rip().Add(0xD8).As<decltype(m_Programs)>();
             }
 
