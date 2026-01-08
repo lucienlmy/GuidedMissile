@@ -5,7 +5,7 @@
 #include "rage/scrProgram.hpp"
 #include "rage/scrThread.hpp"
 #include "rage/scrValue.hpp"
-#include <enums.h>
+// #include <enums.h>
 #include <natives.h>
 
 struct DroneLaunchData
@@ -38,6 +38,16 @@ bool isProgramInitializationFailed = false;
 uint32_t programLoadCounter = 0;
 bool isDroneInitialized = false;
 rage::scrThread* scriptThread = nullptr;
+const char* submarineMissilesDistancePattern = nullptr;
+const char* terrorbyteDroneHeightPattern = nullptr;
+const char* droneDataAndStatePattern = nullptr;
+const char* waitForBroadcastPattern = nullptr;
+const char* shouldKillOnlineScriptPattern = nullptr;
+const char* shouldKillDroneScriptPattern = nullptr;
+const char* isPlayerStateValidPattern = nullptr;
+const char* canReserveMissionObjectsPattern = nullptr;
+uint8_t pushConst1Byte = 0x00;
+uint8_t pushConst0Byte = 0x00;
 uint32_t kosatkaOwnerGlobalIndex = 0;
 uint32_t kosatkaEntityGlobalIndex = 0;
 uint32_t submarineMissilesDistanceTunableOffset = 0;
@@ -45,7 +55,7 @@ uint32_t terrorbyteDroneHeightLimitTunableOffset = 0;
 uint32_t droneDataStaticIndex = 0;
 uint32_t droneStateStaticOffset = 0;
 uint64_t networkIsGameInProgressHash = 0;
-uint64_t GetNetworkTimeHash = 0;
+uint64_t getNetworkTimeHash = 0;
 std::unordered_map<uint32_t, std::vector<uint8_t>> scriptPatchesCache;
 std::unordered_map<uint64_t, uint32_t> nativeHooksCache;
 
@@ -281,26 +291,25 @@ void RunGuidedMissileScript()
         {
             LOG("Script program loaded.");
 
-            // Tested these patterns on b2545 and above, should work down to b2189 as well though
-            ReadScriptCode(program, "56 ? ? 5D ? ? ? 5D ? ? ? 2A", {{4, true}, {6, false}}, &kosatkaOwnerGlobalIndex, 3);      // addr + 4 + RIP + 5 + 1
-            ReadScriptCode(program, "56 ? ? 5D ? ? ? 5D ? ? ? 2A", {{4, true}, {17, false}}, &kosatkaEntityGlobalIndex, 3);    // addr + 4 + RIP + 5 + 4 + 4 + 3 + 1
-            ReadScriptCode(program, "56 ? ? 61 01 00 04 47 ? ? 2C", {{8, false}}, &submarineMissilesDistanceTunableOffset, 2); // No need to wildcard the tunable index as it doesn't change
-            ReadScriptCode(program, "61 01 00 04 47 ? ? 39 03 5D ? ? ? 56 ? ? 38 03 3E", {{5, false}}, &terrorbyteDroneHeightLimitTunableOffset, 2);
-            ReadScriptCode(program, "78 5D ? ? ? 55 ? ? 73", {{2, true}, {6, false}}, &droneDataStaticIndex, 1);   // addr + 2 + RIP + 5 + 1
-            ReadScriptCode(program, "78 5D ? ? ? 55 ? ? 73", {{2, true}, {8, false}}, &droneStateStaticOffset, 1); // addr + 2 + RIP + 5 + 2 + 1
+            ReadScriptCode(program, "56 ? ? 5D ? ? ? 5D ? ? ? 2A", {{4, true}, {6, false}}, &kosatkaOwnerGlobalIndex, 3);        // addr + 4 + RIP + 5 + 1
+            ReadScriptCode(program, "56 ? ? 5D ? ? ? 5D ? ? ? 2A", {{4, true}, {17, false}}, &kosatkaEntityGlobalIndex, 3);      // addr + 4 + RIP + 5 + 4 + 4 + 3 + 1
+            ReadScriptCode(program, submarineMissilesDistancePattern, {{8, false}}, &submarineMissilesDistanceTunableOffset, 2); // No need to wildcard the tunable index as it doesn't change
+            ReadScriptCode(program, terrorbyteDroneHeightPattern, {{5, false}}, &terrorbyteDroneHeightLimitTunableOffset, 2);
+            ReadScriptCode(program, droneDataAndStatePattern, {{2, true}, {6, false}}, &droneDataStaticIndex, 1);   // addr + 2 + RIP + 5 + 1
+            ReadScriptCode(program, droneDataAndStatePattern, {{2, true}, {8, false}}, &droneStateStaticOffset, 1); // addr + 2 + RIP + 5 + 2 + 1
 
-            ApplyScriptPatch(program, g_IsEnhanced ? "37 02 72 71 5D" : "71 39 02 72", {}, {0x72, 0x2E, 0x00, 0x01}); // WaitForBroadcastDataPatch
-            ApplyScriptPatch(program, "62 ? ? ? 71 57 ? ? 2C 01", {}, {0x71, 0x2E, 0x00, 0x01});                      // ShouldKillOnlineScriptPatch
-            ApplyScriptPatch(program, "5D ? ? ? 56 ? ? 72 2E 00 01 5D ? ? ? 06 56", {}, {0x71, 0x2E, 0x00, 0x01});    // ShouldKillDroneScriptPatch
-            ApplyScriptPatch(program, "38 00 39 05 38 05 70 58", {}, {0x72, 0x2E, 0x03, 0x01});                       // IsPlayerStateValidPatch
-            ApplyScriptPatch(program, "2C 01 ? ? 29 48 9D B1 C4", {}, {0x71, 0x2E, 0x00, 0x01});                      // ShouldBlockDronePatch
-            ApplyScriptPatch(program, "3A ? 41 ? 2C 05 ? ? 39 02 2C 01", {}, {0x2E, 0x00, 0x00});                     // ProcessParticipantScriptLaunchPatch
-            ApplyScriptPatch(program, "73 38 00 72 38 01", {}, {0x72, 0x2E, 0x03, 0x01});                             // CanReserveMissionObjectsPatch
-            ApplyScriptPatch(program, "5D ? ? ? 2A 56 ? ? 5D ? ? ? 06 1F 2A", {}, {0x55, 0x2F, 0x00});                // IsGuidedMissileTriggeredPatch
-            ApplyScriptPatch(program, "29 00 C8 AF C7 29 00 C8", {}, {0x71, 0x2E, 0x00, 0x01});                       // IsDroneOutOfWorldBoundsPatch (min: -90000f, -90000f, -1600f, max: 90000f, 90000f, 2600f)
+            ApplyScriptPatch(program, waitForBroadcastPattern, {}, {pushConst1Byte, 0x2E, 0x00, 0x01});         // WaitForBroadcastDataPatch
+            ApplyScriptPatch(program, shouldKillOnlineScriptPattern, {}, {pushConst0Byte, 0x2E, 0x00, 0x01});   // ShouldKillOnlineScriptPatch
+            ApplyScriptPatch(program, shouldKillDroneScriptPattern, {}, {pushConst0Byte, 0x2E, 0x00, 0x01});    // ShouldKillDroneScriptPatch
+            ApplyScriptPatch(program, isPlayerStateValidPattern, {}, {pushConst1Byte, 0x2E, 0x03, 0x01});       // IsPlayerStateValidPatch
+            ApplyScriptPatch(program, "2C 01 ? ? 29 48 9D B1 C4", {}, {pushConst0Byte, 0x2E, 0x00, 0x01});      // ShouldBlockDronePatch
+            ApplyScriptPatch(program, "3A ? 41 ? 2C 05 ? ? 39 02 2C 01", {}, {0x2E, 0x00, 0x00});               // ProcessParticipantScriptLaunchPatch
+            ApplyScriptPatch(program, canReserveMissionObjectsPattern, {}, {pushConst1Byte, 0x2E, 0x03, 0x01}); // CanReserveMissionObjectsPatch
+            ApplyScriptPatch(program, "5D ? ? ? 2A 56 ? ? 5D ? ? ? 06 1F 2A", {}, {0x55, 0x2F, 0x00});          // IsGuidedMissileTriggeredPatch
+            ApplyScriptPatch(program, "29 00 C8 AF C7 29 00 C8", {}, {pushConst0Byte, 0x2E, 0x00, 0x01});       // IsDroneOutOfWorldBoundsPatch (min: -90000f, -90000f, -1600f, max: 90000f, 90000f, 2600f)
 
             ApplyNativeHook(program, networkIsGameInProgressHash, NetworkIsGameInProgressDetour);
-            ApplyNativeHook(program, GetNetworkTimeHash, GetNetworkTimeDetour);
+            ApplyNativeHook(program, getNetworkTimeHash, GetNetworkTimeDetour);
         }
         else
         {
@@ -454,6 +463,47 @@ void ScriptMain()
         return;
     }
 
+    char buf[MAX_PATH];
+    GetModuleFileNameA(nullptr, buf, MAX_PATH);
+    std::string name = std::filesystem::path(buf).filename().string();
+    if (name == "GTA5_Enhanced.exe")
+        g_IsEnhanced = true;
+
+    // Starting with b2802, R* inserted three new opcodes at indices
+    // 0x5E, 0x5F, and 0x60 (STATIC_U24, STATIC_U24_LOAD, STATIC_U24_STORE).
+    // This shifted all existing opcodes with indices > 0x5D forward by +3.
+    // When scanning scripts from builds older than b2802 (where these opcodes
+    // do not exist), we must remap the pattern opcodes back to the old layout.
+    // Therefore, for pre-b2802 builds, any opcode byte > 0x5D is decremented by 3.
+    if (gameVersion < eGameVersion::VER_1_0_2802_0)
+    {
+        submarineMissilesDistancePattern = "56 ? ? 5E 01 00 04 47 ? ? 2C";
+        terrorbyteDroneHeightPattern = "5E 01 00 04 47 ? ? 39 03 5D ? ? ? 56 ? ? 38 03 3E";
+        droneDataAndStatePattern = "75 5D ? ? ? 55 ? ? 70";
+        waitForBroadcastPattern = "6E 39 02 6F";
+        shouldKillOnlineScriptPattern = "5F ? ? ? 6E 57 ? ? 2C 01";
+        shouldKillDroneScriptPattern = "5D ? ? ? 56 ? ? 6F 2E 00 01 5D ? ? ? 06 56";
+        isPlayerStateValidPattern = "38 00 39 05 38 05 6D 58";
+        canReserveMissionObjectsPattern = "70 38 00 6F 38 01";
+
+        pushConst1Byte = 0x6F;
+        pushConst0Byte = 0x6E;
+    }
+    else
+    {
+        submarineMissilesDistancePattern = "56 ? ? 61 01 00 04 47 ? ? 2C";
+        terrorbyteDroneHeightPattern = "61 01 00 04 47 ? ? 39 03 5D ? ? ? 56 ? ? 38 03 3E";
+        droneDataAndStatePattern = "78 5D ? ? ? 55 ? ? 73";
+        waitForBroadcastPattern = g_IsEnhanced ? "37 02 72 71 5D" : "71 39 02 72";
+        shouldKillOnlineScriptPattern = "62 ? ? ? 71 57 ? ? 2C 01";
+        shouldKillDroneScriptPattern = "5D ? ? ? 56 ? ? 72 2E 00 01 5D ? ? ? 06 56";
+        isPlayerStateValidPattern = "38 00 39 05 38 05 70 58";
+        canReserveMissionObjectsPattern = "73 38 00 72 38 01";
+
+        pushConst1Byte = 0x72;
+        pushConst0Byte = 0x71;
+    }
+
     // Thanks to FiveM for old hashes: https://github.com/citizenfx/fivem/blob/3ece3ade3e27ea03b4745de9a1c8f41ad8d0f0e6/code/components/rage-scripting-five/include/CrossMapping_Universal.h
     switch (gameVersion)
     {
@@ -461,42 +511,36 @@ void ScriptMain()
     case eGameVersion::VER_1_0_2189_0_NOSTEAM:
     {
         networkIsGameInProgressHash = 0x25DDB354A40FFCDB;
-        GetNetworkTimeHash = 0x6CAAB7E78B5D978A;
+        getNetworkTimeHash = 0x6CAAB7E78B5D978A;
         break;
     }
     case eGameVersion::VER_1_0_2372_0_STEAM: // 1.57
     case eGameVersion::VER_1_0_2372_0_NOSTEAM:
     {
         networkIsGameInProgressHash = 0x02BFF15CAA701972;
-        GetNetworkTimeHash = 0x551F46B3C7DFB654;
+        getNetworkTimeHash = 0x551F46B3C7DFB654;
         break;
     }
     case eGameVersion::VER_1_0_2545_0_STEAM: // 1.58
     case eGameVersion::VER_1_0_2545_0_NOSTEAM:
     {
         networkIsGameInProgressHash = 0x9315DBF7D972F07A;
-        GetNetworkTimeHash = 0x0A89FDFA763DCAED;
+        getNetworkTimeHash = 0x0A89FDFA763DCAED;
         break;
     }
     case eGameVersion::VER_1_0_2802_0: // 1.64
     {
         networkIsGameInProgressHash = 0xA26A9A07F761D8F8;
-        GetNetworkTimeHash = 0x0DB7F8294D73598B;
+        getNetworkTimeHash = 0x0DB7F8294D73598B;
         break;
     }
     default: // 2944/1.67 and above
     {
         networkIsGameInProgressHash = 0x76CD105BCAC6EB9F;
-        GetNetworkTimeHash = 0x7E3F74F641EE6B27;
+        getNetworkTimeHash = 0x7E3F74F641EE6B27;
         break;
     }
     }
-
-    char buf[MAX_PATH];
-    GetModuleFileNameA(nullptr, buf, MAX_PATH);
-    std::string name = std::filesystem::path(buf).filename().string();
-    if (name == "GTA5_Enhanced.exe")
-        g_IsEnhanced = true;
 
     LOGF("Game type is %s. Game version is %d.", g_IsEnhanced ? "Enhanced" : "Legacy", static_cast<int>(gameVersion));
 
